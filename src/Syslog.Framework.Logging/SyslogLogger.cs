@@ -20,6 +20,11 @@ namespace Syslog.Framework.Logging
 			_settings = settings;
 			_host = host;
 			_lvl = lvl;
+			
+			if (!name.StartsWith(settings.ApplicationName, StringComparison.OrdinalIgnoreCase))
+			{
+				_name = $"{settings.ApplicationName}.{_name}";
+			}
 		}
 
 		public IDisposable BeginScope<TState>(TState state)

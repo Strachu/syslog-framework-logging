@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Syslog.Framework.Logging
 {
@@ -15,6 +16,11 @@ namespace Syslog.Framework.Logging
 		/// Gets or sets the port for the Syslog server.
 		/// </summary>
 		public int ServerPort { get; set; } = 514;
+
+		/// <summary>
+		/// Gets or sets the application name.
+		/// </summary>
+		public string ApplicationName { get; set; } = String.Empty;
 
 		/// <summary>
 		/// Gets or sets the facility type.
