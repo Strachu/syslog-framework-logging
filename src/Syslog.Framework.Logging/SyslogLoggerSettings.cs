@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Syslog.Framework.Logging.TransportProtocols;
 
 namespace Syslog.Framework.Logging
 {
@@ -8,13 +9,24 @@ namespace Syslog.Framework.Logging
 		#region Fields and Methods
 
 		/// <summary>
+		/// Gets or sets the protocol used to send messages to a Syslog server.
+		/// </summary>
+		public TransportProtocol MessageTransportProtocol { get; set; } = TransportProtocol.Udp;
+		
+		/// <summary>
 		/// Gets or sets the host for the Syslog server.
 		/// </summary>
+		/// <remarks>
+		/// Used only when <see cref="MessageTransportProtocol"/> is set to <see cref="TransportProtocol.Udp"/>.
+		/// </remarks>
 		public string ServerHost { get; set; } = "127.0.0.1";
 
 		/// <summary>
 		/// Gets or sets the port for the Syslog server.
 		/// </summary>
+		/// <remarks>
+		/// Used only when <see cref="MessageTransportProtocol"/> is set to <see cref="TransportProtocol.Udp"/>.
+		/// </remarks>
 		public int ServerPort { get; set; } = 514;
 
 		/// <summary>
@@ -22,6 +34,14 @@ namespace Syslog.Framework.Logging
 		/// </summary>
 		public string ApplicationName { get; set; } = String.Empty;
 
+		/// <summary>
+		/// Gets or sets the path to a Unix socket for logging.
+		/// </summary>
+		/// <remarks>
+		/// Used only when <see cref="MessageTransportProtocol"/> is set to <see cref="TransportProtocol.UnixSocket"/>.
+		/// </remarks>
+		public string UnixSocketPath { get; set; } = "/dev/log";
+		
 		/// <summary>
 		/// Gets or sets the facility type.
 		/// </summary>

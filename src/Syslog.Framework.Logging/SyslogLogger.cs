@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using Syslog.Framework.Logging.TransportProtocols;
 
 namespace Syslog.Framework.Logging
 {
@@ -13,13 +14,15 @@ namespace Syslog.Framework.Logging
 		private readonly string _host;
 		private readonly LogLevel _lvl;
 		private readonly SyslogLoggerSettings _settings;
+		private readonly IMessageSender _messageSender;
 
-		public SyslogLogger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl)
+		public SyslogLogger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl, IMessageSender messageSender)
 		{
 			_name = name;
 			_settings = settings;
 			_host = host;
 			_lvl = lvl;
+			_messageSender = messageSender;
 			
 			if (!name.StartsWith(settings.ApplicationName, StringComparison.OrdinalIgnoreCase))
 			{
@@ -59,9 +62,15 @@ namespace Syslog.Framework.Logging
 			var msg = FormatMessage(priority, now, _host, _name, procid, eventId.Id, message);
 			var raw = Encoding.ASCII.GetBytes(msg);
 
-			using (var udp = new UdpClient())
+			try
 			{
-				udp.Send(raw, raw.Length, _settings.ServerHost, _settings.ServerPort);
+				_messageSender.SendMessageToServer(raw);
+			}
+			catch (Exception ex)
+			{
+				// Do not rethrow exception. Crashing an application just because logging has failed due to a transient unavailability of syslog server
+				// does not look like a good practice.
+				Console.Error.WriteLine("Logging failed." + ex);
 			}
 		}
 
@@ -110,8 +119,8 @@ namespace Syslog.Framework.Logging
 	/// </summary>
 	public class Syslog3164Logger : SyslogLogger
 	{
-		public Syslog3164Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl)
-			: base(name, settings, host, lvl)
+		public Syslog3164Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl, IMessageSender messageSender)
+			: base(name, settings, host, lvl, messageSender)
 		{
 		}
 
@@ -130,8 +139,8 @@ namespace Syslog.Framework.Logging
 	{
 		private readonly string _structuredData;
 
-		public Syslog5424v1Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl)
-			: base(name, settings, host, lvl)
+		public Syslog5424v1Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl, IMessageSender messageSender)
+			: base(name, settings, host, lvl, messageSender)
 		{
 			_structuredData = FormatStructuredData(settings);
 		}
