@@ -59,7 +59,16 @@ namespace Syslog.Framework.Logging
 			var msg = FormatMessage(priority, now, _host, _name, _processId, eventId.Id, message);
 			var raw = Encoding.ASCII.GetBytes(msg);
 
-			_messageSender.SendMessageToServer(raw);
+			try
+			{
+				_messageSender.SendMessageToServer(raw);
+			}
+			catch (Exception ex)
+			{
+				// Do not rethrow exception. Crashing an application just because logging has failed due to a transient unavailability of syslog server
+				// does not look like a good practice.
+				Console.Error.WriteLine("Logging failed." + ex);
+			}
 		}
 
 		[Obsolete("Left for backward compatibility only. Will be removed in future. Override the other method overload")]
