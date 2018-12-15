@@ -57,7 +57,16 @@ namespace Syslog.Framework.Logging
 			var msg = FormatMessage(priority, now, _host, _name, procid, eventId.Id, message);
 			var raw = Encoding.ASCII.GetBytes(msg);
 
-			_messageSender.SendMessageToServer(raw);
+			try
+			{
+				_messageSender.SendMessageToServer(raw);
+			}
+			catch (Exception ex)
+			{
+				// Do not rethrow exception. Crashing an application just because logging has failed due to a transient unavailability of syslog server
+				// does not look like a good practice.
+				Console.Error.WriteLine("Logging failed." + ex);
+			}
 		}
 
 		protected abstract string FormatMessage(int priority, DateTime now, string host, string name, int procid, int msgid, string message);
