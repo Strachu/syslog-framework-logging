@@ -18,7 +18,7 @@ namespace Syslog.Framework.Logging
 			_settings = settings;
 			_hostName = hostName;
 			_logLevel = logLevel;
-			_messageSender = MessageSenderFactory.CreateFromSettings(settings);
+			_messageSender = settings.CustomMessageSender ?? MessageSenderFactory.CreateFromSettings(settings);
 			_loggers = new Dictionary<string, ILogger>();
 		}
 
