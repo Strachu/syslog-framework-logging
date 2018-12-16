@@ -1,10 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Net.Sockets;
 using System.Text;
+using Syslog.Framework.Logging.StructuredData;
 using Syslog.Framework.Logging.TransportProtocols;
 using Syslog.Framework.Logging.TransportProtocols.Udp;
 
@@ -63,12 +64,14 @@ namespace Syslog.Framework.Logging
 			if (String.IsNullOrEmpty(message))
                 return;
 
+			var originalRequest = new LogRequest<TState>(eventId, _name, logLevel, state, exception);
+			
 			// Defined in RFC 5424, section 6.2.1, and RFC 3164, section 4.1.1.
 			// If a different value is needed, then this code should probably move into the specific loggers.
 			var severity = MapToSeverityType(logLevel);
 			var priority = ((int)_settings.FacilityType * 8) + (int)severity;
 			var now = _settings.UseUtc ? DateTime.UtcNow : DateTime.Now;
-			var msg = FormatMessage(priority, now, _host, _name, _processId, eventId.Id, message);
+			var msg = FormatMessage(originalRequest, priority, now, _host, _name, _processId, eventId.Id, message);
 			var raw = Encoding.ASCII.GetBytes(msg);
 
 			try
@@ -83,13 +86,13 @@ namespace Syslog.Framework.Logging
 			}
 		}
 
-		[Obsolete("Left for backward compatibility only. Will be removed in future. Override the other method overload")]
+		[Obsolete("Remains for backward compatibility only. Will be removed in future. Override the other method overload")]
 		protected virtual string FormatMessage(int priority, DateTime now, string host, string name, int procid, int msgid, string message)
 		{
 			throw new NotImplementedException($"You have to provide implementation for a {nameof(FormatMessage)} method.");
 		}
 
-		protected virtual string FormatMessage(int priority, DateTime now, string host, string name, int? procid, int msgid, string message)
+		protected virtual string FormatMessage<TLogData>(LogRequest<TLogData> request, int priority, DateTime now, string host, string name, int? procid, int msgid, string message)
 		{
 #pragma warning disable 618
 			return FormatMessage(priority, now, host, name, procid ?? 0, msgid, message);
@@ -143,7 +146,7 @@ namespace Syslog.Framework.Logging
 		{
 		}
 
-		protected override string FormatMessage(int priority, DateTime now, string host, string name, int? procid, int msgid, string message)
+		protected override string FormatMessage<TLogData>(LogRequest<TLogData> request, int priority, DateTime now, string host, string name, int? procid, int msgid, string message)
 		{
             var tag = name.Replace(".", String.Empty).Replace("_", String.Empty); // Alphanumeric
             tag = tag.Substring(0, Math.Min(32, tag.Length)); // Max length is 32 according to spec
@@ -157,31 +160,50 @@ namespace Syslog.Framework.Logging
 	public class Syslog5424v1Logger : SyslogLogger
 	{
 		private const string NilValue = "-";
-		private readonly string _structuredData;
-		
+		private readonly IStructuredDataProvider _structuredDataProvider;
+
 		[Obsolete("Remains for backward compatibility. Will be removed in future. Use the other overload.")]
 		public Syslog5424v1Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl)
 			: base(name, settings, host, lvl)
 		{
 		}
 
-		public Syslog5424v1Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl, IMessageSender messageSender)
+		public Syslog5424v1Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl, IMessageSender messageSender, IStructuredDataProvider structuredDataProvider)
 			: base(name, settings, host, lvl, messageSender)
 		{
-			_structuredData = FormatStructuredData(settings);
+			_structuredDataProvider = structuredDataProvider;
 		}
 
-		private string FormatStructuredData(SyslogLoggerSettings settings)
+		protected override string FormatMessage<TLogData>(LogRequest<TLogData> request, int priority, DateTime now, string host, string name, int? procid, int msgid, string message)
 		{
-			if (settings.StructuredData == null)
-                return null;
+			var providerContext = new StructuredDataProviderContext<TLogData>(request);
+			var structuredData = _structuredDataProvider?.GetStructuredDataForLogRequest(providerContext)?.ToList() ?? new List<SyslogStructuredData>();
 
-			if (!settings.StructuredData.Any())
-                return null;
+			var formattedTimestamp = FormatTimestamp(now);
+			var formattedStructuredData = FormatStructuredData(structuredData);
+			return $"<{priority}>1 {formattedTimestamp} {host ?? NilValue} {name ?? NilValue} {procid?.ToString() ?? NilValue} {msgid} {formattedStructuredData ?? NilValue} {message}";
+		}
+
+		/// <summary>
+		/// Formats the date as required by RFC 5424.
+		/// </summary>
+		private string FormatTimestamp(DateTime time)
+		{
+			return time.ToString("yyyy-MM-ddTHH:mm:ss.ffffffK", CultureInfo.InvariantCulture);
+		}
+
+
+		private string FormatStructuredData(IReadOnlyCollection<SyslogStructuredData> structuredData)
+		{
+			if (structuredData == null)
+				return null;
+
+			if (!structuredData.Any())
+				return null;
 			
 			var sb = new StringBuilder();
 
-			foreach (var data in settings.StructuredData)
+			foreach (var data in structuredData)
 			{
 				if (!IsValidPrintAscii(data.Id, '=', ' ', ']', '"'))
 					throw new InvalidOperationException($"ID for structured data {data.Id} is not valid. US Ascii 33-126 only, except '=', ' ', ']', '\"'");
@@ -204,7 +226,7 @@ namespace Syslog.Framework.Logging
 					}
 				}
 
-            sb.Append("]");
+				sb.Append("]");
 			}
 
 			return sb.ToString();
@@ -218,33 +240,19 @@ namespace Syslog.Framework.Logging
 		private bool IsValidPrintAscii(string name, params char[] invalid)
 		{
 			if (String.IsNullOrEmpty(name))
-                return false;
+				return false;
 
 			foreach (var ch in name)
 			{
 				if (ch < 33)
-                    return false;
+					return false;
 				if (ch > 126)
-                    return false;
+					return false;
 				if (invalid.Contains(ch))
-                    return false;
+					return false;
 			}
 
 			return true;
-		}
-
-		protected override string FormatMessage(int priority, DateTime now, string host, string name, int? procid, int msgid, string message)
-		{
-			var formattedTimestamp = FormatTimestamp(now);
-			return $"<{priority}>1 {formattedTimestamp} {host ?? NilValue} {name ?? NilValue} {procid?.ToString() ?? NilValue} {msgid} {_structuredData ?? NilValue} {message}";
-		}
-
-		/// <summary>
-		/// Formats the date as required by RFC 5424.
-		/// </summary>
-		private string FormatTimestamp(DateTime time)
-		{
-			return time.ToString("yyyy-MM-ddTHH:mm:ss.ffffffK", CultureInfo.InvariantCulture);
 		}
 	}
 }

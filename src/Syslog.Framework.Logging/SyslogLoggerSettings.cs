@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Syslog.Framework.Logging.TransportProtocols;
+using Syslog.Framework.Logging.StructuredData;
 
 namespace Syslog.Framework.Logging
 {
@@ -55,6 +56,7 @@ namespace Syslog.Framework.Logging
 		/// <summary>
 		/// Structured data that is sent with every request. Only for RFC 5424.
 		/// </summary>
+		/// <seealso cref="StructuredDataProviders"/>
 		public IEnumerable<SyslogStructuredData> StructuredData { get; set; }
 
 		/// <summary>
@@ -70,72 +72,16 @@ namespace Syslog.Framework.Logging
 		/// </remarks>
 		public IMessageSender CustomMessageSender { get; set; } 
 
+		/// <summary>
+		/// A list of providers for dynamic structured data which can change per log message such as correlation id or logged in user login.
+		/// </summary>
+		/// <remarks>
+		/// Note that the order of providers matters. If multiple providers returns an data entry with the same id the entry returned
+		/// by the last provider will be used.
+		/// Static structured data passed in to <see cref="StructuredData"/> has always the <em>lowest</em> priority.
+		/// </remarks>
+		public IList<IStructuredDataProvider> StructuredDataProviders { get; set; } = new List<IStructuredDataProvider>();
+		
 		#endregion
-	}
-
-	/// <summary>
-	/// Allows sending of structured data in RFC 5424.
-	/// </summary>
-	public class SyslogStructuredData
-	{
-		/// <summary>
-		/// Creates an instance of SyslogStructuredData.
-		/// </summary>
-		public SyslogStructuredData()
-		{
-		}
-
-		/// <summary>
-		/// Creates an instance of SyslogStructuredData.
-		/// </summary>
-		/// <param name="id"></param>
-		public SyslogStructuredData(string id)
-		{
-			Id = id;
-		}
-
-		/// <summary>
-		/// Gets the ID for the structured data.
-		/// </summary>
-		public string Id { get; set; }
-
-		/// <summary>
-		/// Gets the list of structured data elements.
-		/// </summary>
-		public IEnumerable<SylogStructuredDataElement> Elements { get; set; }
-	}
-
-	/// <summary>
-	/// A named value for structured data.
-	/// </summary>
-	public class SylogStructuredDataElement
-	{
-		/// <summary>
-		/// Creates an instance of SylogStructuredDataElement.
-		/// </summary>
-		public SylogStructuredDataElement()
-		{
-		}
-
-		/// <summary>
-		/// Creates an instance of SylogStructuredDataElement.
-		/// </summary>
-		/// <param name="name"></param>
-		/// <param name="value"></param>
-		public SylogStructuredDataElement(string name, string value)
-		{
-			Name = name;
-			Value = value;
-		}
-
-		/// <summary>
-		/// Gets the name of the element.
-		/// </summary>
-		public string Name { get; set; }
-
-		/// <summary>
-		/// Gets the value of the element.
-		/// </summary>
-		public string Value { get; set; }
 	}
 }
