@@ -41,7 +41,10 @@ namespace Syslog.Framework.Logging
 		/// <summary>
 		/// A provider for dynamic structured data which can change per log message such as correlation id or logged in user login.
 		/// </summary>
-		/// <seealso cref="StructuredData"/>
+		/// <remarks>
+		/// If a provider returns structured data entry with the same id as an entry in <see cref="StructuredData"/> the entry returned
+		/// from provider will take precedence.
+		/// </remarks>
 		public IStructuredDataProvider StructuredDataProvider { get; set; }
 		
 		#endregion

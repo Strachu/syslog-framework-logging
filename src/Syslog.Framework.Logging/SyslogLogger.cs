@@ -150,13 +150,25 @@ namespace Syslog.Framework.Logging
 
 		protected override string FormatMessage<TLogData>(LogRequest<TLogData> request, int priority, DateTime now, string host, string name, int procid, int msgid, string message)
 		{
-			// TODO Allow overriding of static structured data by dynamic ones
-			var dataProviderContext = new StructuredDataProviderContext<TLogData>(request);
-			var dynamicStructuredData = _dynamicStructuredDataProvider.GetStructuredDataForLogRequest(dataProviderContext) ?? Enumerable.Empty<SyslogStructuredData>();
-			var structuredData = _staticStructuredData.Concat(dynamicStructuredData).ToList();
-			
+			var structuredData = RetrieveAllStructuredData(request).ToList();
+
 			var formattedStructuredData = FormatStructuredData(structuredData) ?? String.Empty;
 			return $"<{priority}>1 {now:o} {host} {name} {procid} {msgid} {formattedStructuredData} {message}";
+		}
+
+		private IEnumerable<SyslogStructuredData> RetrieveAllStructuredData<TLogData>(LogRequest<TLogData> request)
+		{
+			var dataProviderContext = new StructuredDataProviderContext<TLogData>(request);
+			var dynamicStructuredData = _dynamicStructuredDataProvider.GetStructuredDataForLogRequest(dataProviderContext) ??
+			                            Enumerable.Empty<SyslogStructuredData>();
+			
+			var structuredData = _staticStructuredData.ToDictionary(x => x.Id);
+			foreach (var dataEntry in dynamicStructuredData)
+			{
+				structuredData[dataEntry.Id] = dataEntry;
+			}
+
+			return structuredData.Values;
 		}
 
 		private string FormatStructuredData(IReadOnlyCollection<SyslogStructuredData> structuredData)
