@@ -34,7 +34,7 @@ namespace Syslog.Framework.Logging
 				case SyslogHeaderType.Rfc3164:
 					return new Syslog3164Logger(name, _settings, _hostName, _logLevel);
 				case SyslogHeaderType.Rfc5424v1:
-					return new Syslog5424v1Logger(name, _settings, _hostName, _logLevel);
+					return new Syslog5424v1Logger(name, _settings, _hostName, _logLevel, _settings.StructuredDataProvider);
 				default:
 					throw new InvalidOperationException($"SyslogHeaderType '{_settings.HeaderType.ToString()}' is not recognized.");
 			}

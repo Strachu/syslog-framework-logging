@@ -1,9 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using Syslog.Framework.Logging.StructuredData;
 
 namespace Syslog.Framework.Logging
 {
@@ -45,13 +47,15 @@ namespace Syslog.Framework.Logging
 			if (String.IsNullOrEmpty(message))
                 return;
 
+			var originalRequest = new LogRequest<TState>(eventId, _name, logLevel, state, exception);
+			
 			// Defined in RFC 5424, section 6.2.1, and RFC 3164, section 4.1.1.
 			// If a different value is needed, then this code should probably move into the specific loggers.
 			var severity = MapToSeverityType(logLevel);
 			var priority = ((int)_settings.FacilityType * 8) + (int)severity;
 			var procid = GetProcID();
 			var now = _settings.UseUtc ? DateTime.UtcNow : DateTime.Now;
-			var msg = FormatMessage(priority, now, _host, _name, procid, eventId.Id, message);
+			var msg = FormatMessage(originalRequest, priority, now, _host, _name, procid, eventId.Id, message);
 			var raw = Encoding.ASCII.GetBytes(msg);
 
 			using (var udp = new UdpClient())
@@ -60,8 +64,19 @@ namespace Syslog.Framework.Logging
 			}
 		}
 
-		protected abstract string FormatMessage(int priority, DateTime now, string host, string name, int procid, int msgid, string message);
+		[Obsolete("Remains for backward compatibility only. Will be removed in future. Override the other method overload")]
+		protected virtual string FormatMessage(int priority, DateTime now, string host, string name, int procid, int msgid, string message)
+		{
+			throw new NotImplementedException($"You have to provide implementation for a {nameof(FormatMessage)} method.");
+		}
 
+		protected virtual string FormatMessage<TLogData>(LogRequest<TLogData> request, int priority, DateTime now, string host, string name, int procid, int msgid, string message)
+		{
+#pragma warning disable 618
+			return FormatMessage(priority, now, host, name, procid, msgid, message);
+#pragma warning restore 618
+		}
+		
 		private int? _procID;
 		private int GetProcID()
 		{
@@ -110,7 +125,7 @@ namespace Syslog.Framework.Logging
 		{
 		}
 
-		protected override string FormatMessage(int priority, DateTime now, string host, string name, int procid, int msgid, string message)
+		protected override string FormatMessage<TLogData>(LogRequest<TLogData> request, int priority, DateTime now, string host, string name, int procid, int msgid, string message)
 		{
             var tag = name.Replace(".", String.Empty).Replace("_", String.Empty); // Alphanumeric
             tag = tag.Substring(0, Math.Min(32, tag.Length)); // Max length is 32 according to spec
@@ -123,26 +138,38 @@ namespace Syslog.Framework.Logging
 	/// </summary>
 	public class Syslog5424v1Logger : SyslogLogger
 	{
-		private readonly string _structuredData;
-
-		public Syslog5424v1Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl)
+		private readonly IList<SyslogStructuredData> _staticStructuredData;
+		private readonly IStructuredDataProvider _dynamicStructuredDataProvider;
+		
+		public Syslog5424v1Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl, IStructuredDataProvider dynamicStructuredDataProvider)
 			: base(name, settings, host, lvl)
 		{
-			_structuredData = FormatStructuredData(settings);
+			_staticStructuredData = settings.StructuredData?.ToList() ?? new List<SyslogStructuredData>();
+			_dynamicStructuredDataProvider = dynamicStructuredDataProvider;
 		}
 
-		private string FormatStructuredData(SyslogLoggerSettings settings)
+		protected override string FormatMessage<TLogData>(LogRequest<TLogData> request, int priority, DateTime now, string host, string name, int procid, int msgid, string message)
 		{
-			if (settings.StructuredData == null)
-                return null;
+			// TODO Allow overriding of static structured data by dynamic ones
+			var dataProviderContext = new StructuredDataProviderContext<TLogData>(request);
+			var dynamicStructuredData = _dynamicStructuredDataProvider.GetStructuredDataForLogRequest(dataProviderContext) ?? Enumerable.Empty<SyslogStructuredData>();
+			var structuredData = _staticStructuredData.Concat(dynamicStructuredData).ToList();
+			
+			var formattedStructuredData = FormatStructuredData(structuredData) ?? String.Empty;
+			return $"<{priority}>1 {now:o} {host} {name} {procid} {msgid} {formattedStructuredData} {message}";
+		}
 
-			if (settings.StructuredData.Count() == 0)
-                return null;
+		private string FormatStructuredData(IReadOnlyCollection<SyslogStructuredData> structuredData)
+		{
+			if (structuredData == null)
+				return null;
+
+			if (!structuredData.Any())
+				return null;
 			
 			var sb = new StringBuilder();
-			sb.Append(" "); // Need to add a space to separate what came before it.
 
-			foreach (var data in settings.StructuredData)
+			foreach (var data in structuredData)
 			{
 				if (!IsValidPrintAscii(data.Id, '=', ' ', ']', '"'))
 					throw new InvalidOperationException($"ID for structured data {data.Id} is not valid. US Ascii 33-126 only, except '=', ' ', ']', '\"'");
@@ -165,7 +192,7 @@ namespace Syslog.Framework.Logging
 					}
 				}
 
-                sb.Append("]");
+				sb.Append("]");
 			}
 
 			return sb.ToString();
@@ -179,25 +206,19 @@ namespace Syslog.Framework.Logging
 		private bool IsValidPrintAscii(string name, params char[] invalid)
 		{
 			if (String.IsNullOrEmpty(name))
-                return false;
+				return false;
 
 			foreach (var ch in name)
 			{
 				if (ch < 33)
-                    return false;
+					return false;
 				if (ch > 126)
-                    return false;
+					return false;
 				if (invalid.Contains(ch))
-                    return false;
+					return false;
 			}
 
 			return true;
-		}
-
-		protected override string FormatMessage(int priority, DateTime now, string host, string name, int procid, int msgid, string message)
-		{
-            var data = _structuredData ?? String.Empty;
-            return $"<{priority}>1 {now:o} {host} {name} {procid} {msgid}{data} {message}";
 		}
 	}
 }
