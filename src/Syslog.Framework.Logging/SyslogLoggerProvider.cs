@@ -22,7 +22,7 @@ namespace Syslog.Framework.Logging
 			_logLevel = logLevel;
 			_loggers = new Dictionary<string, ILogger>();
 
-			var staticStructuredDataProvider = new StaticStructuredDataProvider(settings.StructuredData.ToList());
+			var staticStructuredDataProvider = new StaticStructuredDataProvider(settings.StructuredData?.ToList());
 			var allProviders = new[] {staticStructuredDataProvider}.Concat(settings.StructuredDataProviders).ToList();
 			
 			_structuredDataProvider = new CompositeStructuredDataProvider(allProviders);
