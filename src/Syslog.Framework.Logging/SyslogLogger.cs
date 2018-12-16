@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -202,7 +203,16 @@ namespace Syslog.Framework.Logging
 
 		protected override string FormatMessage(int priority, DateTime now, string host, string name, int? procid, int msgid, string message)
 		{
-			return $"<{priority}>1 {now:o} {host ?? NilValue} {name ?? NilValue} {procid?.ToString() ?? NilValue} {msgid} {_structuredData ?? NilValue} {message}";
+			var formattedTimestamp = FormatTimestamp(now);
+			return $"<{priority}>1 {formattedTimestamp} {host ?? NilValue} {name ?? NilValue} {procid?.ToString() ?? NilValue} {msgid} {_structuredData ?? NilValue} {message}";
+		}
+
+		/// <summary>
+		/// Formats the date as required by RFC 5424.
+		/// </summary>
+		private string FormatTimestamp(DateTime time)
+		{
+			return time.ToString("yyyy-MM-ddTHH:mm:ss.ffffffK", CultureInfo.InvariantCulture);
 		}
 	}
 }
