@@ -197,7 +197,7 @@ namespace Syslog.Framework.Logging
 		protected override string FormatMessage(int priority, DateTime now, string host, string name, int procid, int msgid, string message)
 		{
             var data = _structuredData ?? String.Empty;
-            return $"<{priority}>1 {now:o} {host} {name} {procid} {msgid}{data} {message}";
+            return $"<{priority}>1 {now:o} {host} {name} {procid} {msgid} {data} {message}";
 		}
 	}
 }
