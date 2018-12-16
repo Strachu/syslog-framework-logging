@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using Syslog.Framework.Logging.TransportProtocols;
+using Syslog.Framework.Logging.TransportProtocols.Udp;
 
 namespace Syslog.Framework.Logging
 {
@@ -16,6 +17,12 @@ namespace Syslog.Framework.Logging
 		private readonly SyslogLoggerSettings _settings;
 		private readonly IMessageSender _messageSender;
 
+		[Obsolete("Remains for backward compatibility. Will be removed in future. Use the other overload.")]
+		public SyslogLogger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl)
+			: this(name, settings, host, lvl, new UdpMessageSender(settings.ServerHost, settings.ServerPort))
+		{
+		}
+		
 		public SyslogLogger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl, IMessageSender messageSender)
 		{
 			_name = name;
@@ -114,6 +121,12 @@ namespace Syslog.Framework.Logging
 	/// </summary>
 	public class Syslog3164Logger : SyslogLogger
 	{
+		[Obsolete("Remains for backward compatibility. Will be removed in future. Use the other overload.")]
+		public Syslog3164Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl)
+			: base(name, settings, host, lvl)
+		{
+		}
+		
 		public Syslog3164Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl, IMessageSender messageSender)
 			: base(name, settings, host, lvl, messageSender)
 		{
@@ -133,6 +146,12 @@ namespace Syslog.Framework.Logging
 	public class Syslog5424v1Logger : SyslogLogger
 	{
 		private readonly string _structuredData;
+		
+		[Obsolete("Remains for backward compatibility. Will be removed in future. Use the other overload.")]
+		public Syslog5424v1Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl)
+			: base(name, settings, host, lvl)
+		{
+		}
 
 		public Syslog5424v1Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl, IMessageSender messageSender)
 			: base(name, settings, host, lvl, messageSender)
