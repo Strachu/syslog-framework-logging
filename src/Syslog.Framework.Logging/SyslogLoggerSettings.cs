@@ -62,6 +62,14 @@ namespace Syslog.Framework.Logging
 		/// </summary>
 		public bool UseUtc { get; set; } = false; // Default to false to be backwards compatible with v1.
 
+		/// <summary>
+		/// Gets or sets custom implementation of transport protocol.
+		/// </summary>
+		/// <remarks>
+		/// When it is set, <see cref="MessageTransportProtocol"/> is ignored.
+		/// </remarks>
+		public IMessageSender CustomMessageSender { get; set; } 
+
 		#endregion
 	}
 
