@@ -123,6 +123,7 @@ namespace Syslog.Framework.Logging
 	/// </summary>
 	public class Syslog5424v1Logger : SyslogLogger
 	{
+		private const string NilValue = "-";
 		private readonly string _structuredData;
 
 		public Syslog5424v1Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl)
@@ -136,7 +137,7 @@ namespace Syslog.Framework.Logging
 			if (settings.StructuredData == null)
                 return null;
 
-			if (settings.StructuredData.Count() == 0)
+			if (!settings.StructuredData.Any())
                 return null;
 			
 			var sb = new StringBuilder();
@@ -196,8 +197,7 @@ namespace Syslog.Framework.Logging
 
 		protected override string FormatMessage(int priority, DateTime now, string host, string name, int procid, int msgid, string message)
 		{
-            var data = _structuredData ?? String.Empty;
-            return $"<{priority}>1 {now:o} {host} {name} {procid} {msgid} {data} {message}";
+            return $"<{priority}>1 {now:o} {host ?? NilValue} {name ?? NilValue} {procid} {msgid} {_structuredData ?? NilValue} {message}";
 		}
 	}
 }
