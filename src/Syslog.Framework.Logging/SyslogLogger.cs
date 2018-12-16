@@ -147,7 +147,6 @@ namespace Syslog.Framework.Logging
                 return null;
 			
 			var sb = new StringBuilder();
-			sb.Append(" "); // Need to add a space to separate what came before it.
 
 			foreach (var data in settings.StructuredData)
 			{
@@ -172,7 +171,7 @@ namespace Syslog.Framework.Logging
 					}
 				}
 
-                sb.Append("]");
+            sb.Append("]");
 			}
 
 			return sb.ToString();
