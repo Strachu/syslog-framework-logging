@@ -25,7 +25,7 @@ namespace Syslog.Framework.Logging
 			_messageSender = settings.CustomMessageSender ?? MessageSenderFactory.CreateFromSettings(settings);
 			_loggers = new Dictionary<string, ILogger>();
 
-			var staticStructuredDataProvider = new StaticStructuredDataProvider(settings.StructuredData.ToList());
+			var staticStructuredDataProvider = new StaticStructuredDataProvider(settings.StructuredData?.ToList());
 			var allProviders = new[] {staticStructuredDataProvider}.Concat(settings.StructuredDataProviders).ToList();
 			
 			_structuredDataProvider = new CompositeStructuredDataProvider(allProviders);
