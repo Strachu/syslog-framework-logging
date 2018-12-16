@@ -138,37 +138,21 @@ namespace Syslog.Framework.Logging
 	/// </summary>
 	public class Syslog5424v1Logger : SyslogLogger
 	{
-		private readonly IList<SyslogStructuredData> _staticStructuredData;
-		private readonly IStructuredDataProvider _dynamicStructuredDataProvider;
+		private readonly IStructuredDataProvider _structuredDataProvider;
 		
-		public Syslog5424v1Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl, IStructuredDataProvider dynamicStructuredDataProvider)
+		public Syslog5424v1Logger(string name, SyslogLoggerSettings settings, string host, LogLevel lvl, IStructuredDataProvider structuredDataProvider)
 			: base(name, settings, host, lvl)
 		{
-			_staticStructuredData = settings.StructuredData?.ToList() ?? new List<SyslogStructuredData>();
-			_dynamicStructuredDataProvider = dynamicStructuredDataProvider;
+			_structuredDataProvider = structuredDataProvider;
 		}
 
 		protected override string FormatMessage<TLogData>(LogRequest<TLogData> request, int priority, DateTime now, string host, string name, int procid, int msgid, string message)
 		{
-			var structuredData = RetrieveAllStructuredData(request).ToList();
+			var providerContext = new StructuredDataProviderContext<TLogData>(request);
+			var structuredData = _structuredDataProvider?.GetStructuredDataForLogRequest(providerContext)?.ToList() ?? new List<SyslogStructuredData>();
 
 			var formattedStructuredData = FormatStructuredData(structuredData) ?? String.Empty;
 			return $"<{priority}>1 {now:o} {host} {name} {procid} {msgid} {formattedStructuredData} {message}";
-		}
-
-		private IEnumerable<SyslogStructuredData> RetrieveAllStructuredData<TLogData>(LogRequest<TLogData> request)
-		{
-			var dataProviderContext = new StructuredDataProviderContext<TLogData>(request);
-			var dynamicStructuredData = _dynamicStructuredDataProvider.GetStructuredDataForLogRequest(dataProviderContext) ??
-			                            Enumerable.Empty<SyslogStructuredData>();
-			
-			var structuredData = _staticStructuredData.ToDictionary(x => x.Id);
-			foreach (var dataEntry in dynamicStructuredData)
-			{
-				structuredData[dataEntry.Id] = dataEntry;
-			}
-
-			return structuredData.Values;
 		}
 
 		private string FormatStructuredData(IReadOnlyCollection<SyslogStructuredData> structuredData)

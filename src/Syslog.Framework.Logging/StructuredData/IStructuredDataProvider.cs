@@ -7,6 +7,12 @@ namespace Syslog.Framework.Logging.StructuredData
 	/// </summary>
 	public interface IStructuredDataProvider
 	{
+		/// <summary>
+		/// Returns structured data which should be sent along with message to a syslog server.
+		/// </summary>
+		/// <return>
+		///	Null not allowed.
+		/// </return>
 		IEnumerable<SyslogStructuredData> GetStructuredDataForLogRequest<TLogData>(StructuredDataProviderContext<TLogData> context);
 	}
 }

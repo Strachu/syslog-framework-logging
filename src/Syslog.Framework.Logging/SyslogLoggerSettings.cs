@@ -30,7 +30,7 @@ namespace Syslog.Framework.Logging
 		/// <summary>
 		/// Structured data that is sent with every request. Only for RFC 5424.
 		/// </summary>
-		/// <seealso cref="StructuredDataProvider"/>
+		/// <seealso cref="StructuredDataProviders"/>
 		public IEnumerable<SyslogStructuredData> StructuredData { get; set; }
 
 		/// <summary>
@@ -39,13 +39,14 @@ namespace Syslog.Framework.Logging
 		public bool UseUtc { get; set; } = false; // Default to false to be backwards compatible with v1.
 
 		/// <summary>
-		/// A provider for dynamic structured data which can change per log message such as correlation id or logged in user login.
+		/// A list of providers for dynamic structured data which can change per log message such as correlation id or logged in user login.
 		/// </summary>
 		/// <remarks>
-		/// If a provider returns structured data entry with the same id as an entry in <see cref="StructuredData"/> the entry returned
-		/// from provider will take precedence.
+		/// Note that the order of providers matters. If multiple providers returns an data entry with the same id the entry returned
+		/// by the last provider will be used.
+		/// Static structured data passed in to <see cref="StructuredData"/> has always the <em>lowest</em> priority.
 		/// </remarks>
-		public IStructuredDataProvider StructuredDataProvider { get; set; }
+		public IList<IStructuredDataProvider> StructuredDataProviders { get; set; } = new List<IStructuredDataProvider>();
 		
 		#endregion
 	}
