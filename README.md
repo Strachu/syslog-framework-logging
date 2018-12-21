@@ -139,7 +139,7 @@ To use this transport protocol change your config to include the following lines
     "UnixSocketPath": "/dev/log"
 }
 ```
-#### Using custom protocol
+#### Adding custom protocol
 If built-in protocols aren't enough you can add support for any protocol by implementing just 1 simple interface - `IMessageSender`.
 
 For example, to use Tcp protocol you could write this simple class (note - this is just an example designed for simplicity, NOT a production ready implementation):
@@ -184,3 +184,7 @@ Made changes to a RFC 5424 message sent by the library to fix some deviations fr
 * If we fail to retrieve the process id a NILVALUE is sent instead of 0.
 
 Aside from fixing the aforementioned bugs the changes should be transparent to any RFC 5424 compliant syslog server implementation.
+
+#### 2.2.0
+* Support for sending messages by UNIX domain sockets.
+* Support for custom transport procotol implementations.
